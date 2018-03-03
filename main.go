@@ -43,10 +43,13 @@ func main() {
 		"detail",
 	}
 
-	msg_ch := make(chan Msg, 1)
+	msgCh := make(chan Msg, 1)
+
+	counter := make(map[string]uint64)
 	go func() {
 		store := storage.NewFsStore("data")
-		for msg := range msg_ch {
+		idx := 0
+		for msg := range msgCh {
 			if msg.topic == "__EXIT__" {
 				log.Printf("recv exit signal, close all files and exit")
 				store.Close()
@@ -57,15 +60,22 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
+			counter[msg.topic] += 1
+			idx += 1
+			if idx%1000 == 0 {
+				for k, v := range counter {
+					log.Printf("count %s=%d", k, v)
+				}
+			}
 		}
 	}()
 
-	sig_ch := make(chan os.Signal, 1)
-	signal.Notify(sig_ch, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
-		sig := <-sig_ch
+		sig := <-sigCh
 		log.Printf("recv signal %s", sig)
-		msg_ch <- Msg{"__EXIT__", nil}
+		msgCh <- Msg{"__EXIT__", nil}
 	}()
 
 	// 订阅主题
@@ -74,8 +84,9 @@ func main() {
 			topic := fmt.Sprintf("market.%susdt.%s", symbol, dtype)
 			// 收到数据更新时回调
 			market.Subscribe(topic, func(topic string, json *huobiapi.JSON) {
-				msg_ch <- Msg{topic, json}
+				msgCh <- Msg{topic, json}
 			})
+			log.Printf("subscribe %s", topic)
 		}
 	}
 	log.Printf("finish subscribe")

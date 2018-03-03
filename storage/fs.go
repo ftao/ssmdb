@@ -8,15 +8,44 @@ import (
 	"path"
 )
 
-type gzipFile struct {
+type GzipFile struct {
+	path   string
 	f      *os.File
 	gf     *gzip.Writer
 	writer *bufio.Writer
 }
 
+func makeGzipFile(fullPath string, append bool) (*GzipFile, error) {
+	openFlag := os.O_CREATE | os.O_WRONLY
+	if append {
+		openFlag = openFlag | os.O_APPEND
+	}
+	f, err := os.OpenFile(fullPath, openFlag, 0755)
+	if err != nil {
+		return nil, err
+	}
+	gf := gzip.NewWriter(f)
+	w := bufio.NewWriter(gf)
+	return &GzipFile{fullPath, f, gf, w}, nil
+}
+
+func (gzFile *GzipFile) Close() error {
+	gzFile.writer.Flush()
+	gzFile.gf.Close()
+	gzFile.f.Close()
+	return nil
+}
+
+func (gzFile *GzipFile) WriteRecord(bytes []byte) error {
+	gzFile.writer.Write(bytes)
+	gzFile.writer.WriteByte('\n')
+	gzFile.writer.Flush()
+	return nil
+}
+
 type FsStore struct {
-	Base    string
-	writers map[string]gzipFile
+	Base  string
+	files map[string]*GzipFile
 }
 
 func (s *FsStore) Insert(topic string, data *simplejson.Json) error {
@@ -24,53 +53,38 @@ func (s *FsStore) Insert(topic string, data *simplejson.Json) error {
 	if err != nil {
 		return err
 	}
-	return s.writeRecord(w, data)
+	bytes, err := data.MarshalJSON()
+	if err != nil {
+		return err
+	}
+	return w.WriteRecord(bytes)
 }
 
 func (s *FsStore) Close() error {
-	for _, w := range s.writers {
-		w.writer.Flush()
-		w.gf.Close()
-		w.f.Close()
+	for _, gzf := range s.files {
+		gzf.Close()
 	}
 	return nil
 }
 
-func (s *FsStore) getOrCreateWriter(topic string) (*bufio.Writer, error) {
-	w, ok := s.writers[topic]
+func (s *FsStore) getOrCreateWriter(topic string) (*GzipFile, error) {
+	gzf, ok := s.files[topic]
 	if ok {
-		return w.writer, nil
+		return gzf, nil
 	} else {
-		f, err := os.OpenFile(
-			path.Join(s.Base, topic+".jsonlines.gz"),
-			os.O_APPEND|os.O_CREATE|os.O_WRONLY,
-			0755,
-		)
+		fullPath := path.Join(s.Base, topic+".jsonlines.gz")
+		gzf, err := makeGzipFile(fullPath, true)
 		if err != nil {
 			return nil, err
 		}
-		gf := gzip.NewWriter(f)
-		w := bufio.NewWriter(gf)
-		s.writers[topic] = gzipFile{f, gf, w}
-		return w, nil
-	}
-}
-
-func (s *FsStore) writeRecord(w *bufio.Writer, data *simplejson.Json) error {
-	bytes, err := data.MarshalJSON()
-	if err != nil {
-		return err
-	} else {
-		w.Write(bytes)
-		w.WriteByte('\n')
-		w.Flush()
-		return nil
+		s.files[topic] = gzf
+		return gzf, nil
 	}
 }
 
 func NewFsStore(base string) *FsStore {
 	return &FsStore{
 		base,
-		make(map[string]gzipFile),
+		make(map[string]*GzipFile),
 	}
 }
