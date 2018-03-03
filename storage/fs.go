@@ -2,15 +2,21 @@ package storage
 
 import (
 	"bufio"
+	"compress/gzip"
 	"github.com/bitly/go-simplejson"
 	"os"
 	"path"
 )
 
+type gzipFile struct {
+	f      *os.File
+	gf     *gzip.Writer
+	writer *bufio.Writer
+}
+
 type FsStore struct {
 	Base    string
-	files   map[string]*os.File
-	writers map[string]*bufio.Writer
+	writers map[string]gzipFile
 }
 
 func (s *FsStore) Insert(topic string, data *simplejson.Json) error {
@@ -22,10 +28,10 @@ func (s *FsStore) Insert(topic string, data *simplejson.Json) error {
 }
 
 func (s *FsStore) Close() error {
-	for k, f := range s.files {
-		w, _ := s.writers[k]
-		w.Flush()
-		f.Close()
+	for _, w := range s.writers {
+		w.writer.Flush()
+		w.gf.Close()
+		w.f.Close()
 	}
 	return nil
 }
@@ -33,19 +39,19 @@ func (s *FsStore) Close() error {
 func (s *FsStore) getOrCreateWriter(topic string) (*bufio.Writer, error) {
 	w, ok := s.writers[topic]
 	if ok {
-		return w, nil
+		return w.writer, nil
 	} else {
 		f, err := os.OpenFile(
-			path.Join(s.Base, topic+".jsonlines"),
+			path.Join(s.Base, topic+".jsonlines.gz"),
 			os.O_APPEND|os.O_CREATE|os.O_WRONLY,
 			0755,
 		)
 		if err != nil {
 			return nil, err
 		}
-		w := bufio.NewWriter(f)
-		s.files[topic] = f
-		s.writers[topic] = w
+		gf := gzip.NewWriter(f)
+		w := bufio.NewWriter(gf)
+		s.writers[topic] = gzipFile{f, gf, w}
 		return w, nil
 	}
 }
@@ -65,7 +71,6 @@ func (s *FsStore) writeRecord(w *bufio.Writer, data *simplejson.Json) error {
 func NewFsStore(base string) *FsStore {
 	return &FsStore{
 		base,
-		make(map[string]*os.File),
-		make(map[string]*bufio.Writer),
+		make(map[string]gzipFile),
 	}
 }
