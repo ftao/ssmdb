@@ -1,11 +1,16 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
+	"github.com/bitly/go-simplejson"
+	"github.com/ftao/ssmdb/storage"
 	"github.com/leizongmin/huobiapi"
-	"os"
 )
+
+type Msg struct {
+	topic string
+	data  *simplejson.Json
+}
 
 func main() {
 	// 创建客户端实例
@@ -34,22 +39,13 @@ func main() {
 		"detail",
 	}
 
-	ch := make(chan *huobiapi.JSON)
+	ch := make(chan Msg)
 	go func() {
-		f, err := os.Create("result.jsonlines")
-		if err != nil {
-			panic(err)
-		}
-		defer f.Close()
-		w := bufio.NewWriter(f)
-		for json := range ch {
-			bytes, err := json.MarshalJSON()
+		store := storage.NewFsStore("data")
+		for msg := range ch {
+			err := store.Insert(msg.topic, msg.data)
 			if err != nil {
-				fmt.Printf("error: %s", err)
-			} else {
-				w.Write(bytes)
-				w.WriteByte('\n')
-				w.Flush()
+				panic(err)
 			}
 		}
 	}()
@@ -60,7 +56,7 @@ func main() {
 			topic := fmt.Sprintf("market.%susdt.%s", symbol, dtype)
 			// 收到数据更新时回调
 			market.Subscribe(topic, func(topic string, json *huobiapi.JSON) {
-				ch <- json
+				ch <- Msg{topic, json}
 			})
 		}
 	}
