@@ -13,20 +13,9 @@
   revision = "ea4d1f681babbce9545c9c5f3d5194a789c89f5b"
   version = "v1.2.0"
 
-[[projects]]
-  name = "github.com/leizongmin/huobiapi"
-  packages = [
-    ".",
-    "client",
-    "debug",
-    "market"
-  ]
-  revision = "5543ff7e44410ab002deb39ef689a0c91506d1ee"
-  version = "v1.0.6"
-
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "fb0baaffb7c7516a1cea9d20f4568902e0fd80f3e38e9765d7be910804862776"
+  inputs-digest = "ec2a27b41058b07911ba0d1da0e638de5fb256a1671ec435e321042387c3d1ed"
   solver-name = "gps-cdcl"
   solver-version = 1

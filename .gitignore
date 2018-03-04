@@ -90,3 +90,6 @@ ENV/
 
 # go deps
 vendor
+
+# vim
+.*.sw?

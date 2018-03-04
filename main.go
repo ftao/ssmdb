@@ -3,8 +3,9 @@ package main
 import (
 	"fmt"
 	"github.com/bitly/go-simplejson"
+	"github.com/ftao/ssmdb/exchanges/common"
+	"github.com/ftao/ssmdb/exchanges/huobipro"
 	"github.com/ftao/ssmdb/storage"
-	"github.com/leizongmin/huobiapi"
 	"log"
 	"os"
 	"os/signal"
@@ -18,7 +19,8 @@ type Msg struct {
 
 func main() {
 	// 创建客户端实例
-	market, err := huobiapi.NewMarket()
+	handler := huobipro.NewHandler()
+	market, err := common.NewMarket(handler)
 	if err != nil {
 		panic(err)
 	}
@@ -47,7 +49,7 @@ func main() {
 
 	counter := make(map[string]uint64)
 	go func() {
-		store := storage.NewFsStore("data")
+		store := storage.NewFsStore("data2")
 		idx := 0
 		for msg := range msgCh {
 			if msg.topic == "__EXIT__" {
@@ -83,7 +85,7 @@ func main() {
 		for _, dtype := range dataTypes {
 			topic := fmt.Sprintf("market.%susdt.%s", symbol, dtype)
 			// 收到数据更新时回调
-			market.Subscribe(topic, func(topic string, json *huobiapi.JSON) {
+			market.Subscribe(topic, func(topic string, json *simplejson.Json) {
 				msgCh <- Msg{topic, json}
 			})
 			log.Printf("subscribe %s", topic)
