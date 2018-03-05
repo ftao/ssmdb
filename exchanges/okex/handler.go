@@ -1,4 +1,4 @@
-package huobipro
+package okex
 
 import (
 	"bytes"
@@ -30,21 +30,23 @@ func (h *OkExHandler) GetEndpoint() string {
 }
 
 func (h *OkExHandler) ParsePayload(data []byte) ([]*simplejson.Json, error) {
-	msg, err := uncompress(data)
-	if err != nil {
-		return nil, err
-	}
+	//msg, err := uncompress(data)
+	//if err != nil {
+	//		return nil, err
+	//	}
+	msg := data
 	json, err := simplejson.NewJson(msg)
 	if err != nil {
 		return nil, err
 	}
+	msgs := make([]*simplejson.Json, 0, 1)
 	arr, err := json.Array()
 	if err != nil {
-		return nil, err
+		msgs = append(msgs, json)
+		return msgs, nil
 	}
-	msgs := make([]*simplejson.Json, len(arr))
-	for i, item := range arr {
-		msgs[i] = item.(*simplejson.Json)
+	for i, _ := range arr {
+		msgs = append(msgs, json.GetIndex(i))
 	}
 	return msgs, nil
 }
@@ -56,12 +58,9 @@ func (h *OkExHandler) ParseMsgType(msg *simplejson.Json) common.MsgType {
 	} else if event == "pong" {
 		return common.PONG
 	} else {
-		_, err := msg.Array()
-		if err == nil {
-			return common.SUB_MSG
-		}
+		return common.SUB_MSG
 	}
-	return common.UNKNOW
+	//return common.UNKNOW
 }
 
 func (h *OkExHandler) RequireSubRep() bool {
@@ -108,7 +107,7 @@ func (h *OkExHandler) MakeSubReq(topic string) *simplejson.Json {
 }
 
 func (h *OkExHandler) MakeTopic(base string, dst string, dtype string) string {
-	return ftm.Sprintf("ok_sub_spot_%s_%s_%s", base, dst, dtype)
+	return fmt.Sprintf("ok_sub_spot_%s_%s_%s", base, dst, dtype)
 }
 
 func (h *OkExHandler) GetDataTypes() []string {

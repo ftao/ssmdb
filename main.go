@@ -3,8 +3,8 @@ package main
 import (
 	"github.com/bitly/go-simplejson"
 	"github.com/ftao/ssmdb/exchanges/common"
-	"github.com/ftao/ssmdb/exchanges/huobipro"
-	//"github.com/ftao/ssmdb/exchanges/okex"
+	//"github.com/ftao/ssmdb/exchanges/huobipro"
+	"github.com/ftao/ssmdb/exchanges/okex"
 	"github.com/ftao/ssmdb/storage"
 	"log"
 	"os"
@@ -19,8 +19,8 @@ type Msg struct {
 
 func main() {
 	// 创建客户端实例
-	handler := huobipro.NewHandler()
-	//handler := okex.NewHandler()
+	//handler := huobipro.NewHandler()
+	handler := okex.NewHandler()
 	market, err := common.NewMarket(handler)
 	if err != nil {
 		panic(err)
