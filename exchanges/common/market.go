@@ -76,7 +76,7 @@ func (m *Market) connect() error {
 		return err
 	}
 	m.ws = ws
-	m.lastPing = getUinxMillisecond()
+	m.lastPing = GetUinxMillisecond()
 	log.Println("connected")
 
 	m.handleMessageLoop()
@@ -122,50 +122,45 @@ func (m *Market) sendMessage(data interface{}) error {
 // handleMessageLoop 处理消息循环
 func (m *Market) handleMessageLoop() {
 	m.ws.Listen(func(buf []byte) {
-		msg, err := unGzipData(buf)
+		msgs, err := m.handler.ParsePayload(buf)
 		//log.Println("readMessage", string(msg))
 		if err != nil {
 			log.Println(err)
 			return
 		}
-		json, err := simplejson.NewJson(msg)
+		for _, msg := range msgs {
+			t := m.handler.ParseMsgType(msg)
 
-		if err != nil {
-			log.Println(err)
-			return
-		}
-
-		t := m.handler.ParseMsgType(json)
-
-		switch t {
-		case PING:
-			t := m.handler.ParsePing(json)
-			if t > 0 {
-				m.sendMessage(m.handler.MakePong(t))
-			}
-		case PONG:
-			//m.handler.HandlePong(json)
-			t := m.handler.ParsePong(json)
-			if t > 0 {
-				m.lastPing = t
-			}
-		case SUB_REP:
-			id := m.handler.ParseSubRepId(json)
-			c, ok := m.subscribeResultCb[id]
-			if ok {
-				c <- json
-			}
-		case SUB_MSG:
-			ch := m.handler.ParseSubMsgTopic(json)
-			if ch != "" {
-				listener, ok := m.listeners.Load(ch)
-				if ok {
-					// log.Println("handleSubscribe", json)
-					listener.(Listener)(ch, json)
+			switch t {
+			case PING:
+				t := m.handler.ParsePing(msg)
+				if t > 0 {
+					m.sendMessage(m.handler.MakePong(t))
 				}
+			case PONG:
+				//m.handler.HandlePong(json)
+				t := m.handler.ParsePong(msg)
+				if t > 0 {
+					m.lastPing = t
+				}
+			case SUB_REP:
+				id := m.handler.ParseSubRepId(msg)
+				c, ok := m.subscribeResultCb[id]
+				if ok {
+					c <- msg
+				}
+			case SUB_MSG:
+				ch := m.handler.ParseSubMsgTopic(msg)
+				if ch != "" {
+					listener, ok := m.listeners.Load(ch)
+					if ok {
+						// log.Println("handleSubscribe", json)
+						listener.(Listener)(ch, msg)
+					}
+				}
+			case UNKNOW:
+				log.Printf("unknow message: %s", msg)
 			}
-		case UNKNOW:
-			log.Printf("unknow message: %s", json)
 		}
 	})
 }
@@ -173,7 +168,7 @@ func (m *Market) handleMessageLoop() {
 // keepAlive 保持活跃
 func (m *Market) keepAlive() {
 	m.ws.KeepAlive(m.HeartbeatInterval, func() {
-		var t = getUinxMillisecond()
+		var t = GetUinxMillisecond()
 		m.sendMessage(m.handler.MakePing(t))
 
 		// 检查上次ping时间，如果超过20秒无响应，重新连接
@@ -208,7 +203,7 @@ func (m *Market) Subscribe(topic string, listener Listener) error {
 	m.listeners.Store(topic, listener)
 	m.subscribedTopic[topic] = true
 
-	if isNew {
+	if isNew && m.handler.RequireSubRep() {
 		var json = <-m.subscribeResultCb[topic]
 		// 判断订阅结果，如果出错则返回出错信息
 		if msg := m.handler.ParseSubRepError(json); msg != "" {

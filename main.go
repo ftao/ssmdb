@@ -1,10 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"github.com/bitly/go-simplejson"
 	"github.com/ftao/ssmdb/exchanges/common"
 	"github.com/ftao/ssmdb/exchanges/huobipro"
+	//"github.com/ftao/ssmdb/exchanges/okex"
 	"github.com/ftao/ssmdb/storage"
 	"log"
 	"os"
@@ -20,6 +20,7 @@ type Msg struct {
 func main() {
 	// 创建客户端实例
 	handler := huobipro.NewHandler()
+	//handler := okex.NewHandler()
 	market, err := common.NewMarket(handler)
 	if err != nil {
 		panic(err)
@@ -38,12 +39,7 @@ func main() {
 		"zec",
 	}
 
-	dataTypes := []string{
-		"kline.1min",
-		"depth.step0",
-		"trade.detail",
-		"detail",
-	}
+	dataTypes := handler.GetDataTypes()
 
 	msgCh := make(chan Msg, 1)
 
@@ -83,7 +79,8 @@ func main() {
 	// 订阅主题
 	for _, symbol := range symbols {
 		for _, dtype := range dataTypes {
-			topic := fmt.Sprintf("market.%susdt.%s", symbol, dtype)
+			topic := handler.MakeTopic(symbol, "usdt", dtype)
+			// topic := fmt.Sprintf("market.%susdt.%s", symbol, dtype)
 			// 收到数据更新时回调
 			market.Subscribe(topic, func(topic string, json *simplejson.Json) {
 				msgCh <- Msg{topic, json}
