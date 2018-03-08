@@ -1,9 +1,10 @@
 package main
 
 import (
+	"flag"
 	"github.com/bitly/go-simplejson"
 	"github.com/ftao/ssmdb/exchanges/common"
-	//"github.com/ftao/ssmdb/exchanges/huobipro"
+	"github.com/ftao/ssmdb/exchanges/huobipro"
 	"github.com/ftao/ssmdb/exchanges/okex"
 	"github.com/ftao/ssmdb/storage"
 	"log"
@@ -18,34 +19,32 @@ type Msg struct {
 }
 
 func main() {
+	exchange := flag.String("exchange", "huobipro", "exchange name")
+	saveDir := "data3/" + *exchange
+	var handler common.Handler
+	switch *exchange {
+	case "huobipro":
+		handler = huobipro.NewHandler()
+	case "okex":
+		handler = okex.NewHandler()
+	default:
+		panic("invalid exchange name")
+	}
+
 	// 创建客户端实例
-	//handler := huobipro.NewHandler()
-	handler := okex.NewHandler()
+	//handler := okex.NewHandler()
 	market, err := common.NewMarket(handler)
 	if err != nil {
 		panic(err)
 	}
 
-	symbols := []string{
-		"btc",
-		"bch",
-		"eth",
-		"etc",
-		"ltc",
-		"eos",
-		"xrp",
-		"omg",
-		"dash",
-		"zec",
-	}
-
-	dataTypes := handler.GetDataTypes()
+	log.Printf("fetch data from exchange %s, save to %s", *exchange, saveDir)
 
 	msgCh := make(chan Msg, 1)
 
 	counter := make(map[string]uint64)
 	go func() {
-		store := storage.NewFsStore("data2")
+		store := storage.NewFsStore(saveDir)
 		idx := 0
 		for msg := range msgCh {
 			if msg.topic == "__EXIT__" {
@@ -77,16 +76,13 @@ func main() {
 	}()
 
 	// 订阅主题
-	for _, symbol := range symbols {
-		for _, dtype := range dataTypes {
-			topic := handler.MakeTopic(symbol, "usdt", dtype)
-			// topic := fmt.Sprintf("market.%susdt.%s", symbol, dtype)
-			// 收到数据更新时回调
-			market.Subscribe(topic, func(topic string, json *simplejson.Json) {
-				msgCh <- Msg{topic, json}
-			})
-			log.Printf("subscribe %s", topic)
-		}
+	for _, topic := range handler.GetTopics() {
+		// topic := fmt.Sprintf("market.%susdt.%s", symbol, dtype)
+		// 收到数据更新时回调
+		market.Subscribe(topic, func(topic string, json *simplejson.Json) {
+			msgCh <- Msg{topic, json}
+		})
+		log.Printf("subscribe %s", topic)
 	}
 	log.Printf("finish subscribe")
 

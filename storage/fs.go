@@ -6,6 +6,7 @@ import (
 	"github.com/bitly/go-simplejson"
 	"os"
 	"path"
+	"time"
 )
 
 type GzipFile struct {
@@ -49,7 +50,7 @@ type FsStore struct {
 }
 
 func (s *FsStore) Insert(topic string, data *simplejson.Json) error {
-	w, err := s.getOrCreateWriter(topic)
+	w, err := s.getOrCreateWriter(topic, data)
 	if err != nil {
 		return err
 	}
@@ -60,6 +61,14 @@ func (s *FsStore) Insert(topic string, data *simplejson.Json) error {
 	return w.WriteRecord(bytes)
 }
 
+func (s *FsStore) makeFileName(topic string, data *simplejson.Json) string {
+	currentHour := time.Now().Format("2006010215")
+	return path.Join(
+		s.Base,
+		topic+"-"+currentHour+".jsonlines.gz",
+	)
+}
+
 func (s *FsStore) Close() error {
 	for _, gzf := range s.files {
 		gzf.Close()
@@ -67,22 +76,28 @@ func (s *FsStore) Close() error {
 	return nil
 }
 
-func (s *FsStore) getOrCreateWriter(topic string) (*GzipFile, error) {
+func (s *FsStore) getOrCreateWriter(topic string, data *simplejson.Json) (*GzipFile, error) {
+	fullPath := s.makeFileName(topic, data)
 	gzf, ok := s.files[topic]
 	if ok {
-		return gzf, nil
-	} else {
-		fullPath := path.Join(s.Base, topic+".jsonlines.gz")
-		gzf, err := makeGzipFile(fullPath, true)
-		if err != nil {
-			return nil, err
+		if gzf.path == fullPath {
+			return gzf, nil
+		} else {
+			gzf.Close()
+			gzf = nil
+			delete(s.files, topic)
 		}
-		s.files[topic] = gzf
-		return gzf, nil
 	}
+	gzf, err := makeGzipFile(fullPath, true)
+	if err != nil {
+		return nil, err
+	}
+	s.files[topic] = gzf
+	return gzf, nil
 }
 
 func NewFsStore(base string) *FsStore {
+	os.MkdirAll(base, 0755)
 	return &FsStore{
 		base,
 		make(map[string]*GzipFile),
