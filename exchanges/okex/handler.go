@@ -7,6 +7,7 @@ import (
 	"github.com/bitly/go-simplejson"
 	"github.com/ftao/ssmdb/exchanges/common"
 	"io/ioutil"
+	"strings"
 )
 
 func uncompress(buf []byte) ([]byte, error) {
@@ -117,4 +118,29 @@ func (h *OkExHandler) GetDataTypes() []string {
 		"ticker",
 		"depth",
 	}
+}
+
+func (h *OkExHandler) GetSymbols() []string {
+	return strings.Split(
+		"ltc_btc eth_btc etc_btc bch_btc bt1_btc bt2_btc btg_btc qtum_btc hsr_btc neo_btc gas_btc "+
+			"btc_usdt eth_usdt ltc_usdt etc_usdt bch_usdt "+
+			"qtum_usdt hsr_usdt neo_usdt gas_usdt "+
+			"etc_eth",
+		" ",
+	)
+}
+
+func (h *OkExHandler) GetTopics() []string {
+	symbols := h.GetSymbols()
+	dtypes := h.GetDataTypes()
+	topics := make([]string, 0, len(symbols)*len(dtypes))
+	for _, symbol := range symbols {
+		for _, dtype := range dtypes {
+			topics = append(
+				topics,
+				fmt.Sprintf("ok_sub_spot_%s_%s", symbol, dtype),
+			)
+		}
+	}
+	return topics
 }

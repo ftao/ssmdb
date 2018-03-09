@@ -119,3 +119,55 @@ func (h *HuobiproHandler) GetDataTypes() []string {
 		"detail",
 	}
 }
+
+func (h *HuobiproHandler) GetTopics() []string {
+	bases := []string{
+		"usdt",
+		"btc",
+		"eth",
+	}
+
+	targets := make([][]string, 3)
+	targets[0] = []string{
+		"btc",
+		"eth",
+		"bch",
+		"etc",
+		"ltc",
+		"eos",
+		"xrp",
+		"omg",
+		"dash",
+		"zec",
+	}
+	targets[1] = []string{
+		"eth",
+		"bch",
+		"etc",
+		"ltc",
+		"eos",
+		"xrp",
+		"omg",
+		"dash",
+		"zec",
+	}
+
+	targets[2] = []string{
+		"eos",
+		"omg",
+	}
+
+	dataTypes := h.GetDataTypes()
+	topics := make([]string, 0)
+	for i, base := range bases {
+		for _, target := range targets[i] {
+			for _, dtype := range dataTypes {
+				topics = append(
+					topics,
+					h.MakeTopic(target, base, dtype),
+				)
+			}
+		}
+	}
+	return topics
+}

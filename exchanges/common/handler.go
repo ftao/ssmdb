@@ -31,4 +31,5 @@ type Handler interface {
 	ParseSubMsgTopic(msg *simplejson.Json) string
 	GetDataTypes() []string
 	MakeTopic(base string, dst string, dtype string) string
+	GetTopics() []string
 }
