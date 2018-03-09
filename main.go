@@ -18,8 +18,10 @@ type Msg struct {
 	data  *simplejson.Json
 }
 
+var exchange = flag.String("exchange", "huobipro", "exchange name")
+
 func main() {
-	exchange := flag.String("exchange", "huobipro", "exchange name")
+	flag.Parse()
 	saveDir := "data3/" + *exchange
 	var handler common.Handler
 	switch *exchange {
