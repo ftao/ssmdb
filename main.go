@@ -2,10 +2,9 @@ package main
 
 import (
 	"flag"
-	"github.com/bitly/go-simplejson"
 	"github.com/ftao/ssmdb/exchanges/common"
 	"github.com/ftao/ssmdb/exchanges/huobipro"
-	"github.com/ftao/ssmdb/exchanges/okex"
+	//"github.com/ftao/ssmdb/exchanges/okex"
 	"github.com/ftao/ssmdb/storage"
 	"log"
 	"os"
@@ -13,81 +12,62 @@ import (
 	"syscall"
 )
 
-type Msg struct {
-	topic string
-	data  *simplejson.Json
-}
+var exchangeName = flag.String("exchange", "huobipro", "exchange name")
 
-var exchange = flag.String("exchange", "huobipro", "exchange name")
-
-func main() {
-	flag.Parse()
-	saveDir := "data3/" + *exchange
-	var handler common.Handler
-	switch *exchange {
+func makeExchange(name string) common.IExchange {
+	switch name {
 	case "huobipro":
-		handler = huobipro.NewHandler()
-	case "okex":
-		handler = okex.NewHandler()
+		return huobipro.NewExchange()
+	//case "okex":
+	//		return okex.NewHandler()
 	default:
 		panic("invalid exchange name")
 	}
+}
+
+func main() {
+	flag.Parse()
+	saveDir := "data4/" + *exchangeName
 
 	// 创建客户端实例
-	//handler := okex.NewHandler()
-	market, err := common.NewMarket(handler)
-	if err != nil {
-		panic(err)
-	}
+	exchange := makeExchange(*exchangeName)
+	log.Printf("fetch data from exchange %s, save to %s", *exchangeName, saveDir)
 
-	log.Printf("fetch data from exchange %s, save to %s", *exchange, saveDir)
-
-	msgCh := make(chan Msg, 1)
-
-	counter := make(map[string]uint64)
+	msgCh := make(chan common.Message, 100)
+	// read message from market
 	go func() {
-		store := storage.NewFsStore(saveDir)
-		idx := 0
-		for msg := range msgCh {
-			if msg.topic == "__EXIT__" {
-				log.Printf("recv exit signal, close all files and exit")
-				store.Close()
-				os.Exit(0)
-				break
-			}
-			err := store.Insert(msg.topic, msg.data)
+		for {
+			msgs, err := exchange.Recv()
 			if err != nil {
-				panic(err)
+				log.Printf("recv error: %s", err)
+				continue
 			}
-			counter[msg.topic] += 1
-			idx += 1
-			if idx%1000 == 0 {
-				for k, v := range counter {
-					log.Printf("count %s=%d", k, v)
-				}
+			for _, msg := range msgs {
+				msgCh <- msg
 			}
 		}
 	}()
 
+	done := make(chan int, 1)
+	go func() {
+		store := storage.NewFsStore(saveDir)
+		for msg := range msgCh {
+			err := store.Insert(msg.Topic, msg.Data)
+			if err != nil {
+				panic(err)
+			}
+		}
+		store.Close()
+		done <- 1
+	}()
+
+	// write exit signal
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
 		sig := <-sigCh
 		log.Printf("recv signal %s", sig)
-		msgCh <- Msg{"__EXIT__", nil}
+		close(msgCh)
 	}()
-
-	// 订阅主题
-	for _, topic := range handler.GetTopics() {
-		// topic := fmt.Sprintf("market.%susdt.%s", symbol, dtype)
-		// 收到数据更新时回调
-		market.Subscribe(topic, func(topic string, json *simplejson.Json) {
-			msgCh <- Msg{topic, json}
-		})
-		log.Printf("subscribe %s", topic)
-	}
-	log.Printf("finish subscribe")
-
-	// 进入阻塞等待，这样不会导致进程退出
-	market.Loop()
+	<-done
 }

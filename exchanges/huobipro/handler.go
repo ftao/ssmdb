@@ -37,7 +37,7 @@ func hasKey(data *simplejson.Json, key string) bool {
 	return ok
 }
 
-func (h *HuobiproHandler) ParsePayload(data []byte) ([]*simplejson.Json, error) {
+func (h *HuobiproHandler) ParsePayload(data []byte) ([]common.Message, error) {
 	msg, err := unGzipData(data)
 	if err != nil {
 		return nil, err
@@ -46,7 +46,8 @@ func (h *HuobiproHandler) ParsePayload(data []byte) ([]*simplejson.Json, error) 
 	if err != nil {
 		return nil, err
 	}
-	return []*simplejson.Json{json}, nil
+	topic := json.Get("ch").MustString("_unknown_")
+	return []common.Message{common.Message{topic, json}}, nil
 }
 
 func (h *HuobiproHandler) ParseMsgType(msg *simplejson.Json) common.MsgType {

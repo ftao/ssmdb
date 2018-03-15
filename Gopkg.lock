@@ -8,14 +8,26 @@
   version = "v0.5.0"
 
 [[projects]]
+  name = "github.com/cenkalti/backoff"
+  packages = ["."]
+  revision = "61153c768f31ee5f130071d08fc82b85208528de"
+  version = "v1.1.0"
+
+[[projects]]
   name = "github.com/gorilla/websocket"
   packages = ["."]
   revision = "ea4d1f681babbce9545c9c5f3d5194a789c89f5b"
   version = "v1.2.0"
 
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/net"
+  packages = ["context"]
+  revision = "e0c57d8f86c17f0724497efcb3bc617e82834821"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ec2a27b41058b07911ba0d1da0e638de5fb256a1671ec435e321042387c3d1ed"
+  inputs-digest = "42676fa16a6e6c28e939bf48a13e7fa613ccff454ba244e7309ac5de4ed9cf45"
   solver-name = "gps-cdcl"
   solver-version = 1
