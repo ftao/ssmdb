@@ -2,14 +2,16 @@ package main
 
 import (
 	"flag"
-	"github.com/ftao/ssmdb/exchanges/common"
-	"github.com/ftao/ssmdb/exchanges/huobipro"
-	//"github.com/ftao/ssmdb/exchanges/okex"
-	"github.com/ftao/ssmdb/storage"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+
+	//"github.com/ftao/ssmdb/exchanges/okex"
+	"github.com/ftao/ssmdb/exchanges/common"
+	"github.com/ftao/ssmdb/exchanges/huobipro"
+	"github.com/ftao/ssmdb/storage"
 )
 
 var exchangeName = flag.String("exchange", "huobipro", "exchange name")
@@ -17,12 +19,16 @@ var exchangeName = flag.String("exchange", "huobipro", "exchange name")
 func makeExchange(name string) common.IExchange {
 	switch name {
 	case "huobipro":
-		return huobipro.NewExchange()
+		return huobipro.NewExchange(name)
 	//case "okex":
 	//		return okex.NewHandler()
 	default:
 		panic("invalid exchange name")
 	}
+}
+
+func publishVars() {
+	http.ListenAndServe(":8000", nil)
 }
 
 func main() {
@@ -60,6 +66,8 @@ func main() {
 		store.Close()
 		done <- 1
 	}()
+
+	go publishVars()
 
 	// write exit signal
 	sigCh := make(chan os.Signal, 1)
