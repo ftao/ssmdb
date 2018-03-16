@@ -57,9 +57,12 @@ func (m *HuobiproExchange) Recv() ([]common.Message, error) {
 	toReturn := make([]common.Message, 0, len(msgs))
 	for _, msg := range msgs {
 		mt := m.h.ParseMsgType(msg.Data)
-		if mt == common.PING {
+		switch mt {
+		case PING:
 			m.HandlePing(msg)
-		} else {
+		case SUB_REP:
+			m.HandleSubRep(msg)
+		default:
 			toReturn = append(toReturn, msg)
 		}
 	}
@@ -72,6 +75,15 @@ func (m *HuobiproExchange) HandlePing(msg common.Message) error {
 	)
 	log.Printf("write pong: %s", pong)
 	return m.wss.WriteMessage(websocket.TextMessage, pong)
+}
+
+func (m *HuobiproExchange) HandleSubRep(msg common.Message) error {
+	log.Printf(
+		"recv sub reply message: id=%s status=%s",
+		msg.Data.Get("id").MustString(),
+		msg.Data.Get("status").MustString(),
+	)
+	return nil
 }
 
 func (m *HuobiproExchange) Close() error {

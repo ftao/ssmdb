@@ -9,6 +9,16 @@ import (
 	"io/ioutil"
 )
 
+type MsgType int
+
+const (
+	UNKNOW  MsgType = iota
+	PING            = iota
+	PONG            = iota
+	SUB_REP         = iota
+	SUB_MSG         = iota
+)
+
 /// 解压gzip的数据
 func unGzipData(buf []byte) ([]byte, error) {
 	r, err := gzip.NewReader(bytes.NewBuffer(buf))
@@ -18,18 +28,11 @@ func unGzipData(buf []byte) ([]byte, error) {
 	return ioutil.ReadAll(r)
 }
 
-// Endpoint 行情的Websocket入口
-var Endpoint = "wss://api.huobi.pro/ws"
-
 type HuobiproHandler struct{}
 
 // NewMarket 创建Market实例
 func NewHandler() *HuobiproHandler {
 	return &HuobiproHandler{}
-}
-
-func (h *HuobiproHandler) GetEndpoint() string {
-	return Endpoint
 }
 
 func hasKey(data *simplejson.Json, key string) bool {
@@ -50,31 +53,23 @@ func (h *HuobiproHandler) ParsePayload(data []byte) ([]common.Message, error) {
 	return []common.Message{common.Message{topic, json}}, nil
 }
 
-func (h *HuobiproHandler) ParseMsgType(msg *simplejson.Json) common.MsgType {
+func (h *HuobiproHandler) ParseMsgType(msg *simplejson.Json) MsgType {
 	switch {
 	case hasKey(msg, "ping"):
-		return common.PING
+		return PING
 	case hasKey(msg, "pong"):
-		return common.PONG
+		return PONG
 	case hasKey(msg, "ch"):
-		return common.SUB_MSG
+		return SUB_MSG
 	case hasKey(msg, "status") && hasKey(msg, "id"):
-		return common.SUB_REP
+		return SUB_REP
 	default:
-		return common.UNKNOW
+		return UNKNOW
 	}
-}
-
-func (h *HuobiproHandler) RequireSubRep() bool {
-	return true
 }
 
 func (h *HuobiproHandler) ParsePing(msg *simplejson.Json) int64 {
 	return msg.Get("ping").MustInt64()
-}
-
-func (h *HuobiproHandler) ParsePong(msg *simplejson.Json) int64 {
-	return msg.Get("pong").MustInt64()
 }
 
 func (h *HuobiproHandler) MakePong(t int64) *simplejson.Json {
