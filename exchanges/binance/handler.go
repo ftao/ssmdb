@@ -43,20 +43,20 @@ func (h *BinanceHandler) GetDataTypes() []string {
 func (h *BinanceHandler) GetTopics() []string {
 
 	symbols := []string{
-		"btc_usdt",
-		"bcc_usdt",
-		"eth_usdt",
-		"ltc_usdt",
-		"neo_usdt",
+		"btcusdt",
+		"bccusdt",
+		"ethusdt",
+		"ltcusdt",
+		"neousdt",
 
-		"bcc_btc",
-		"eth_btc",
-		"etc_btc",
-		"neo_btc",
+		"bccbtc",
+		"ethbtc",
+		"etcbtc",
+		"neobtc",
 
-		"etc_eth",
-		"eos_eth",
-		"neo_eth",
+		"etceth",
+		"eoseth",
+		"neoeth",
 	}
 
 	dataTypes := h.GetDataTypes()
