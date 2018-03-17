@@ -2,7 +2,6 @@ package huobipro
 
 import (
 	"encoding/json"
-	"expvar"
 	"log"
 
 	"github.com/ftao/ssmdb/exchanges/common"
@@ -12,12 +11,10 @@ import (
 var endpoint = "wss://api.huobi.pro/ws"
 
 type HuobiproExchange struct {
-	name           string
-	lastPong       *expvar.Int
-	recvCounter    *expvar.Int
-	counterByTopic *expvar.Map
-	wss            *common.WebSocketSubscriber
-	h              *HuobiproHandler
+	name  string
+	stats *common.StatsVars
+	wss   *common.WebSocketSubscriber
+	h     *HuobiproHandler
 }
 
 func makeSubMessages(h *HuobiproHandler) []common.WebSocketMessage {
@@ -46,15 +43,11 @@ func NewExchange(name string) *HuobiproExchange {
 	}
 
 	wss := common.NewWebSocketSubscriber(factory)
-	counterByTopic := expvar.NewMap(name + ".topic_msg_count")
-	counterByTopic.Init()
 	return &HuobiproExchange{
-		name:           name,
-		lastPong:       expvar.NewInt(name + ".last_pong"),
-		recvCounter:    expvar.NewInt(name + ".msg_count"),
-		counterByTopic: counterByTopic,
-		wss:            wss,
-		h:              handler,
+		name:  name,
+		stats: common.NewStatsVars(name),
+		wss:   wss,
+		h:     handler,
 	}
 }
 
@@ -73,18 +66,17 @@ func (m *HuobiproExchange) Recv() ([]common.Message, error) {
 		case SUB_REP:
 			m.HandleSubRep(msg)
 		default:
-			m.counterByTopic.Add(msg.Topic, 1)
 			toReturn = append(toReturn, msg)
 		}
+		m.stats.UpdateOnRecv(msg.Topic)
 	}
-	m.recvCounter.Add(1)
 	return toReturn, nil
 }
 
 func (m *HuobiproExchange) HandlePing(msg common.Message) error {
 	t := m.h.ParsePing(msg.Data)
 	pong, _ := json.Marshal(m.h.MakePong(t))
-	m.lastPong.Set(t)
+	m.stats.UpdateOnSend()
 	return m.wss.WriteMessage(websocket.TextMessage, pong)
 }
 
