@@ -30,6 +30,7 @@ type SimpleWebSocketFacotry struct {
 }
 
 func (swf *SimpleWebSocketFacotry) Connect() (*websocket.Conn, error) {
+	log.Printf("connect to %s", swf.Url)
 	conn, resp, err := websocket.DefaultDialer.Dial(swf.Url, swf.ReqHeader)
 	if err != nil {
 		log.Printf("fail to connect, err=%s resp=%s", err, resp)
