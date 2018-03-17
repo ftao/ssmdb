@@ -8,9 +8,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	//"github.com/ftao/ssmdb/exchanges/okex"
 	"github.com/ftao/ssmdb/exchanges/common"
 	"github.com/ftao/ssmdb/exchanges/huobipro"
+	"github.com/ftao/ssmdb/exchanges/okex"
 	"github.com/ftao/ssmdb/storage"
 )
 
@@ -20,8 +20,8 @@ func makeExchange(name string) common.IExchange {
 	switch name {
 	case "huobipro":
 		return huobipro.NewExchange(name)
-	//case "okex":
-	//		return okex.NewHandler()
+	case "okex":
+		return okex.NewExchange(name)
 	default:
 		panic("invalid exchange name")
 	}
