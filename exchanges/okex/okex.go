@@ -18,15 +18,17 @@ type OkexExchange struct {
 
 func makeSubMessages(h *OkexHandler) []common.WebSocketMessage {
 	msgs := make([]common.WebSocketMessage, 0)
-	b, err := json.Marshal(h.MakeSubReq(h.GetTopics()))
-	if err != nil {
-		panic(err)
+	for _, topic := range h.GetTopics() {
+		b, err := json.Marshal(h.MakeSubReq(topic))
+		if err != nil {
+			panic(err)
+		}
+		msg := common.WebSocketMessage{
+			websocket.TextMessage,
+			b,
+		}
+		msgs = append(msgs, msg)
 	}
-	msg := common.WebSocketMessage{
-		websocket.TextMessage,
-		b,
-	}
-	msgs = append(msgs, msg)
 	return msgs
 }
 

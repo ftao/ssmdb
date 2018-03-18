@@ -84,12 +84,8 @@ func (h *OkexHandler) ParseSubMsgTopic(msg *simplejson.Json) string {
 	return msg.Get("channel").MustString()
 }
 
-func (h *OkexHandler) MakeSubReq(topics []string) interface{} {
-	arr := make([]SubReq, 0, len(topics))
-	for _, topic := range topics {
-		arr = append(arr, SubReq{"addChannel", topic})
-	}
-	return arr
+func (h *OkexHandler) MakeSubReq(topic string) interface{} {
+	return &SubReq{"addChannel", topic}
 }
 
 func (h *OkexHandler) MakeTopic(base string, dst string, dtype string) string {

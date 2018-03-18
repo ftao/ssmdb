@@ -84,13 +84,10 @@ func (ws *WebSocketSubscriber) keepConnected() {
 		for ws.isConnected {
 			ws.connCond.Wait()
 		}
-		log.Printf("connecting ...")
 		ws.connect()
 		ws.connCond.Broadcast()
 		ws.connLock.Unlock()
-		log.Printf("connecting made")
 		ws.subscribe()
-		log.Printf("finish subscribe")
 	}
 }
 
@@ -110,7 +107,9 @@ func (ws *WebSocketSubscriber) connect() {
 
 	err := backoff.Retry(op, ebf)
 	if err != nil {
-		log.Printf("err: %s", err)
+		log.Printf("connect fail: %s", err)
+	} else {
+		log.Printf("connect success")
 	}
 }
 
@@ -119,6 +118,8 @@ func (ws *WebSocketSubscriber) subscribe() {
 	err := ws.factory.Init(ws)
 	if err != nil {
 		log.Printf("subscribe error: %s", err)
+	} else {
+		log.Printf("subscribe success")
 	}
 }
 
